@@ -40,7 +40,11 @@ defaults = {
   }
 }
 yaml_config = Hash.new
-yaml_config = YAML.load_file "Vagrantconfig.yml" if File.exist?("Vagrantconfig.yml")
+begin
+  yaml_config = YAML.load_file "Vagrantconfig.yml" if File.exist?("Vagrantconfig.yml")
+rescue Exception => e
+  fail Vagrant::Errors::VagrantError.new, "The Vagrantconfig.yml config file contains syntax errors:\n" + e.message
+end
 if yaml_config.is_a?(Hash)
   params = defaults.merge(yaml_config)
   # Fix the first level if not properly set in config
@@ -54,7 +58,7 @@ if yaml_config.is_a?(Hash)
   yep_said_intro = false
 else
   yaml_error = yaml_config.to_s
-  fail Vagrant::Errors::VagrantError.new, "The Vagrantconfig.yml config file contains syntax errors, vagrant will exit.\nThis is what the parser returned:\n#{yaml_error}"
+  fail Vagrant::Errors::VagrantError.new, "The Vagrantconfig.yml config file contains errors, vagrant will exit.\nThis is what the parser returned:\n#{yaml_error}"
 end
 def yep_puts(msg, only_on_cmd = "up")
   only_on_cmd = only_on_cmd.to_s
