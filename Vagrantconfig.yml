@@ -1,0 +1,28 @@
+# This is a simple configuration file sourced by the Vagrantfile
+# You should delete values if you want to use the defaults (check the top of the Vagrantfile for the default values)
+# If you only leave them empty, then an empty value is used!
+
+vagrant:
+  box:      "boxcutter/ubuntu1604"
+
+vm:
+  hostname: "inside.dev"
+  memory:   1024
+  swap:     1024
+  nfs:      true
+
+#provision:
+#  packages: "htop links"
+#  commands:
+#    always:
+#      - 'echo "Hello! Todays date is $(date)"'
+#      - "cd /vagrant && sudo -u vagrant php app/console cache:clear"
+#    once:
+#      - 'echo "Just a second, your box will be ready soon..."'
+#      - "cd /vagrant && sudo -u vagrant php bin/composer install"
+
+mysql:
+  rootpass: "test123"
+
+apache:
+  webroot:  "web"
