@@ -118,9 +118,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   if params['vm']['swap'].to_i > 0
     config.vm.provision :shell, run: "always", privileged: true, inline: <<-SWAPEOF.gsub(/^ {6}/, '')
       echo -n "Creating swap"
-      [ ! -e /var/swap.1 ] && /bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=#{params['vm']['swap']} status=none && chmod 600 /var/swap.1 && /sbin/mkswap /var/swap.1 >/dev/null \
+      [ ! -e /var/swap.1 ] && { /bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=#{params['vm']['swap']} status=none && chmod 600 /var/swap.1 && /sbin/mkswap /var/swap.1 >/dev/null \
         && /sbin/swapon /var/swap.1 >/dev/null \
-        || echo "error creating swap" >&2
+        || echo "error creating swap" >&2; } \
+      || true
     SWAPEOF
   end
 
