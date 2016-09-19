@@ -116,7 +116,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.provision :shell, privileged: true, inline: "(grep -q 'mesg n' /root/.profile && sed -i '/mesg n/d' /root/.profile && echo 'Ignore the previous stdin/mesg error, fixing this now...') || exit 0;"
 
   if params['vm']['swap'].to_i > 0
-    config.vm.provision :shell, run: "always", privileged: true, inline: <<-SWAPEOF.gsub(/^ {6}/, '')
+    config.vm.provision "Swap creation", type: "shell", run: "always", privileged: true, inline: <<-SWAPEOF.gsub(/^ {6}/, '')
       echo -n "Creating swap"
       [ ! -e /var/swap.1 ] && { /bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=#{params['vm']['swap']} status=none && chmod 600 /var/swap.1 && /sbin/mkswap /var/swap.1 >/dev/null \
         && /sbin/swapon /var/swap.1 >/dev/null \
@@ -125,7 +125,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     SWAPEOF
   end
 
-  config.vm.provision "shell", inline: <<-PROVISIONEOF.gsub(/^ {4}/, '')
+  config.vm.provision "Base provisioning", type: "shell", inline: <<-PROVISIONEOF.gsub(/^ {4}/, '')
     echo "Configuring packages"
     debconf-set-selections <<< 'mysql-server mysql-server/root_password password #{params['mysql']['rootpass']}'
     debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password #{params['mysql']['rootpass']}'
@@ -160,7 +160,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   if !is_provisioned and !(params['provision']['packages'].nil?) and params['provision']['packages'].length > 0
     package_count = params['provision']['packages'].split(" ").length
     yep_puts "Will install #{package_count} extra packages"
-    config.vm.provision "shell", inline: <<-PACKAGESEOF.gsub(/ {6}/, '')
+    config.vm.provision "Extra packages", type: "shell", inline: <<-PACKAGESEOF.gsub(/ {6}/, '')
       echo "Installing extra packages"
       apt-get -y install #{params['provision']['packages']} > /dev/null
     PACKAGESEOF
@@ -171,14 +171,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       once_count = params['provision']['commands']['once'].length
       yep_puts "Will run #{once_count} custom commands on provision"
       params['provision']['commands']['once'].each do |cmd|
-        config.vm.provision "shell", inline: "set -x; #{cmd}"
+        config.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, inline: cmd
       end
     end
     if !(params['provision']['commands']['always'].nil?) and params['provision']['commands']['always'].kind_of?(Array)
       always_count = params['provision']['commands']['always'].length
       yep_puts "Will run #{always_count} custom commands on boot"
       params['provision']['commands']['always'].each do |cmd|
-        config.vm.provision "shell", run: "always", inline: "set -x; #{cmd}"
+        config.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, run: "always", inline: cmd
       end
     end
   end
