@@ -154,6 +154,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     a2dissite 000-default > /dev/null
     a2ensite 001-vagrant > /dev/null
     service apache2 restart > /dev/null
+
+    # automatically move into /vagrant when ssh'ing into the box
+    echo 'cd /vagrant' >> /home/vagrant/.bashrc
   PROVISIONEOF
 
   is_provisioned = File.exist?('.vagrant/machines/default/virtualbox/action_provision')
