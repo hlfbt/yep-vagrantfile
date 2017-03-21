@@ -5,7 +5,7 @@
 # String interpolation with the configurated values is used on all commands configured.
 # This means that you could for example write the following command:
 #  'mysql -uroot -p%{mysql.rootpass} %{mysql.databases[0]} < /vagrant/database_dump.sql'
-# This also means that you can define any custom configuration parameters in this configuration file reference them inside the commands!
+# This also means that you can define any custom configuration parameters in this configuration file reference and them inside the commands!
 
 vagrant:
   name:     "inside"
