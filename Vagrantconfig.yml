@@ -2,7 +2,13 @@
 # You should delete values if you want to use the defaults (check the top of the Vagrantfile for the default values)
 # If you only leave them empty, then an empty value is used!
 
+# String interpolation with the configurated values is used on all commands configured.
+# This means that you could for example write the following command:
+#  'mysql -uroot -p%{mysql.rootpass} %{mysql.databases[0]} < /vagrant/database_dump.sql'
+# This also means that you can define any custom configuration parameters in this configuration file reference them inside the commands!
+
 vagrant:
+  name:     "inside"
   box:      "boxcutter/ubuntu1604"
 
 vm:
@@ -12,7 +18,7 @@ vm:
   nfs:      true
 
 #provision:
-#  packages: "htop links"
+#  packages: "htop"
 #  commands:
 #    always:
 #      - 'echo "Hello! Todays date is $(date)"'
@@ -23,6 +29,8 @@ vm:
 
 mysql:
   rootpass: "test123"
+  databases:
+    - inside
 
 apache:
   webroot:  "web"

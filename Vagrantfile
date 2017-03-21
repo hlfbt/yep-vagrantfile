@@ -1,10 +1,10 @@
 # ----------
-# YAML Easy Provision™ powered Vagrantfile
+# YAML Easy Provision powered Vagrantfile
 # ----------
 #
 # Author: Alexander Schulz (alexander@codekunst.com)
 #
-# Description: The YEP™ system allows for easy peasy box and provisioning configuration
+# Description: The YEP system allows for easy peasy box and provisioning configuration
 #              with the help of a pretty, easy to read YAML configuration file!
 
 # ATTENTION: please install the hostmanager plugin using the following command:
@@ -14,9 +14,13 @@
 
 require 'yaml'
 
+root_path = File.expand_path(File.dirname(__FILE__))
+basename = File.basename(root_path)
+
 # Load Vagrantconfig.yml configuration, or assume defaults if not present
 defaults = {
   'vagrant' => {
+    'name'     => basename,
     'box'      => "boxcutter/ubuntu1604"  # The ubuntu/xenial64 box has a bunch of problems with interfaces etc.
   },
   'vm' => {
@@ -33,61 +37,100 @@ defaults = {
     }
   },
   'mysql' => {
-    'rootpass' => "test123"
+    'rootpass' => "test123",
+    'databases' => []
   },
   'apache' => {
     'webroot'  => "web"
   }
 }
-yaml_config = Hash.new
-begin
-  yaml_config = YAML.load_file "Vagrantconfig.yml" if File.exist?("Vagrantconfig.yml")
-rescue Exception => e
-  fail Vagrant::Errors::VagrantError.new, "The Vagrantconfig.yml config file contains syntax errors:\n" + e.message
-end
-if yaml_config.is_a?(Hash)
-  params = defaults.merge(yaml_config)
-  # Fix the first level if not properly set in config
-  params.each do |key, val|
-    params[key] = defaults[key] if val.nil?
+
+def flatten_hash(hash, prefix = '', flat = nil)
+  flat = Hash.new if flat.nil?
+  if hash.kind_of?(Hash)
+    hash.each do |key, val|
+      if key.is_a?(Integer)
+        pfx = "#{prefix}[#{key}]"
+      else
+        pfx = prefix.length > 0 ? "#{prefix}.#{key}" : key
+      end
+      flat = flatten_hash(val, pfx, flat)
+    end
+  elsif hash.kind_of?(Array)
+    hash.each_with_index do |val, idx|
+      pfx = "#{prefix}[#{idx}]"
+      flat = flatten_hash(val, pfx, flat)
+    end
+  else
+    prefix = "hash" if prefix.length < 1
+    flat[prefix] = hash
   end
-  if ARGV[0] == "up"
-    puts "YAML Easy Provision™ enabled"
-    puts "YAML Easy Provision™ couldn't find a 'Vagrantconfig.yml' file, so it assumed default values!" if !(File.exist?("Vagrantconfig.yml"))
-  end
-  yep_said_intro = false
-else
-  yaml_error = yaml_config.to_s
-  fail Vagrant::Errors::VagrantError.new, "The Vagrantconfig.yml config file contains errors, vagrant will exit.\nThis is what the parser returned:\n#{yaml_error}"
+
+  return flat
 end
+
+def merge_recursively(a, b)
+  a.merge(b) do |key, a_item, b_item|
+    if a_item.is_a?(Hash) and b_item.is_a?(Hash)
+      merge_recursively(a_item, b_item)
+    else
+      b_item.nil? ? a_item : b_item
+    end
+  end
+end
+
+$yep_said_intro = false
 def yep_puts(msg, only_on_cmd = "up")
   only_on_cmd = only_on_cmd.to_s
   if only_on_cmd.length == 0 or ARGV[0] == only_on_cmd
-    if !(defined? yep_said_intro) or (!!yep_said_intro) == false
-      yep_said_intro = true
-      puts "YAML Easy Provision™ says:"
+    if !(defined? $yep_said_intro) or (!!$yep_said_intro) == false
+      $yep_said_intro = true
+      puts "YAML Easy Provision says:"
     end
     puts ' - ' + msg
   end
 end
 
 
+yaml_config = Hash.new
+begin
+  yaml_config = YAML.load_file "#{root_path}/Vagrantconfig.yml" if File.exist?("#{root_path}/Vagrantconfig.yml")
+rescue Exception => e
+  fail Vagrant::Errors::VagrantError.new, "The Vagrantconfig.yml config file contains syntax errors:\n" + e.message
+end
+
+if yaml_config.is_a?(Hash)
+  config = merge_recursively(defaults, yaml_config)
+  interpolation_config = flatten_hash(config).inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
+  if ARGV[0] == "up"
+    puts "YAML Easy Provision enabled"
+    puts "YAML Easy Provision couldn't find a 'Vagrantconfig.yml' file, so it assumed default values!" if !(File.exist?("#{root_path}/Vagrantconfig.yml"))
+  end
+else
+  yaml_error = yaml_config.to_s
+  fail Vagrant::Errors::VagrantError.new, "The Vagrantconfig.yml config file contains errors, vagrant will exit.\nThis is what the parser returned:\n#{yaml_error}"
+end
+
+is_provisioned = File.exist?("#{root_path}/.vagrant/machines/#{config['vagrant']['name']}/virtualbox/action_provision")
+
+
 VAGRANTFILE_API_VERSION = "2"
 
-Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-  config.vm.hostname = params['vm']['hostname']
-  config.vm.box = params['vagrant']['box']
-  config.vm.box_check_update = false
-  config.vm.network "private_network", type: "dhcp"
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
+  vagrant.vm.hostname = config['vm']['hostname']
+  vagrant.vm.box = config['vagrant']['box']
+  vagrant.vm.box_check_update = false
+  vagrant.vm.define config['vagrant']['name']
+  vagrant.vm.network "private_network", type: "dhcp"
 
   # Automatically manage /etc/hosts on hosts and guests
   if Vagrant.has_plugin? 'vagrant-hostmanager'
-    config.hostmanager.enabled = true
-    config.hostmanager.manage_host = true
+    vagrant.hostmanager.enabled = true
+    vagrant.hostmanager.manage_host = true
     # Custom IP resolver to fetch the box's IP address, since hostmanager doesn't support DHCP
     # Cache box addresses for when ssh is not available
     cached_addresses = {}
-    config.hostmanager.ip_resolver = proc do |vm, resolving_vm|
+    vagrant.hostmanager.ip_resolver = proc do |vm, resolving_vm|
       if cached_addresses[vm.name].nil?
         if hostname = (vm.ssh_info && vm.ssh_info[:host])
           vm.communicate.execute("hostname -I") do |type, data|
@@ -101,37 +144,38 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
    fail Vagrant::Errors::VagrantError.new, "You don't have the vagrant-hostmanager plugin installed, please install it with this command:\nvagrant plugin install vagrant-hostmanager"
   end
 
-  config.vm.provider :virtualbox do |vb|
-    vb.customize ["modifyvm", :id, "--memory", params['vm']['memory']]
+  vagrant.vm.provider :virtualbox do |vb|
+    vb.customize ["modifyvm", :id, "--memory", config['vm']['memory']]
   end
 
-  use_nfs = params['vm']['nfs']
+  use_nfs = config['vm']['nfs']
   if use_nfs == "true" or (!!use_nfs == use_nfs and use_nfs == true)
-    config.vm.synced_folder "./", "/vagrant", nfs: true
+    vagrant.vm.provision :reload if is_provisioned
+    vagrant.vm.synced_folder "./", "/vagrant", nfs: true
   else
-    config.vm.synced_folder "./", "/vagrant"
+    vagrant.vm.synced_folder "./", "/vagrant"
   end
 
   # Shut the "stdin: is not a tty" and "mesg: ttyname failed : Inappropriate ioctl for device" warnings up
-  config.vm.provision :shell, privileged: true, inline: "(grep -q 'mesg n' /root/.profile && sed -i '/mesg n/d' /root/.profile && echo 'Ignore the previous stdin/mesg error, fixing this now...') || exit 0;"
+  vagrant.vm.provision :shell, privileged: true, inline: "(grep -q 'mesg n' /root/.profile && sed -i '/mesg n/d' /root/.profile && echo 'Ignore the previous stdin/mesg error, fixing this now...') || exit 0;"
 
-  if params['vm']['swap'].to_i > 0
-    config.vm.provision "Swap creation", type: "shell", run: "always", privileged: true, inline: <<-SWAPEOF.gsub(/^ {6}/, '')
+  if config['vm']['swap'].to_i > 0
+    vagrant.vm.provision "Swap creation", type: "shell", run: "always", privileged: true, inline: <<-SWAPEOF.gsub(/^ {6}/, '')
       echo -n "Creating swap"
-      [ ! -e /var/swap.1 ] && { /bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=#{params['vm']['swap']} status=none && chmod 600 /var/swap.1 && /sbin/mkswap /var/swap.1 >/dev/null \
+      [ ! -e /var/swap.1 ] && { /bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=#{config['vm']['swap']} status=none && chmod 600 /var/swap.1 && /sbin/mkswap /var/swap.1 >/dev/null \
         && /sbin/swapon /var/swap.1 >/dev/null \
         || echo "error creating swap" >&2; } \
       || true
     SWAPEOF
   end
 
-  config.vm.provision "Base provisioning", type: "shell", inline: <<-PROVISIONEOF.gsub(/^ {4}/, '')
+  vagrant.vm.provision "Base provisioning", type: "shell", inline: <<-PROVISIONEOF.gsub(/^ {4}/, '')
     echo "Configuring packages"
-    debconf-set-selections <<< 'mysql-server mysql-server/root_password password #{params['mysql']['rootpass']}'
-    debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password #{params['mysql']['rootpass']}'
+    debconf-set-selections <<< 'mysql-server mysql-server/root_password password #{config['mysql']['rootpass']}'
+    debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password #{config['mysql']['rootpass']}'
     debconf-set-selections <<< 'phpmyadmin phpmyadmin/dbconfig-install boolean true'
     debconf-set-selections <<< 'phpmyadmin phpmyadmin/app-password-confirm password'
-    debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/admin-pass password #{params['mysql']['rootpass']}'
+    debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/admin-pass password #{config['mysql']['rootpass']}'
     debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/app-pass password'
     debconf-set-selections <<< 'phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2'
 
@@ -139,7 +183,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     apt-get update > /dev/null && apt-get -y install apache2 libapache2-mod-php php php-cli php-curl php-gd php-zip php-mcrypt php-mysql mysql-server phpmyadmin graphicsmagick unzip git > /dev/null
 
     echo "Linking web-root"
-    rm -rf /var/www/html && ln -s /vagrant/#{params['apache']['webroot']} /var/www/html
+    rm -rf /var/www/html && ln -s /vagrant/#{config['apache']['webroot']} /var/www/html
 
     echo "Configuring php"
     # This assumes php7 obviously, which is default on ubuntu 16.04+
@@ -159,37 +203,43 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     echo 'cd /vagrant' >> /home/vagrant/.bashrc
   PROVISIONEOF
 
-  is_provisioned = File.exist?('.vagrant/machines/default/virtualbox/action_provision')
-  if !is_provisioned and !(params['provision']['packages'].nil?) and params['provision']['packages'].length > 0
-    package_count = params['provision']['packages'].split(" ").length
+  if !is_provisioned and !(config['provision']['packages'].nil?) and config['provision']['packages'].length > 0
+    package_count = config['provision']['packages'].split(" ").length
     yep_puts "Will install #{package_count} extra packages"
-    config.vm.provision "Extra packages", type: "shell", inline: <<-PACKAGESEOF.gsub(/ {6}/, '')
+    vagrant.vm.provision "Extra packages", type: "shell", inline: <<-PACKAGESEOF.gsub(/ {6}/, '')
       echo "Installing extra packages"
-      apt-get -y install #{params['provision']['packages']} > /dev/null
+      apt-get -y install #{config['provision']['packages']} > /dev/null
     PACKAGESEOF
   end
 
-  if !(params['provision']['commands'].nil?) and params['provision']['commands'].kind_of?(Hash)
-    if !is_provisioned and !(params['provision']['commands']['once'].nil?) and params['provision']['commands']['once'].kind_of?(Array)
-      once_count = params['provision']['commands']['once'].length
+  if !is_provisioned and !(config['mysql']['databases'].nil?) and config['mysql']['databases'].kind_of?(Array)
+    yep_puts "Will create database(s) %s" % config['mysql']['databases'].join(", ")
+    config['mysql']['databases'].each do |db|
+      vagrant.vm.provision "Create Database: #{db}", type: "shell", keep_color: true, inline: "mysql -uroot -p#{config['mysql']['rootpass']} -e 'CREATE DATABASE `#{db}`;' >/dev/null"
+    end
+  end
+
+  if !(config['provision']['commands'].nil?) and config['provision']['commands'].kind_of?(Hash)
+    if !is_provisioned and !(config['provision']['commands']['once'].nil?) and config['provision']['commands']['once'].kind_of?(Array)
+      once_count = config['provision']['commands']['once'].length
       yep_puts "Will run #{once_count} custom commands on provision"
-      params['provision']['commands']['once'].each do |cmd|
-        config.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, inline: cmd
+      config['provision']['commands']['once'].each do |cmd|
+        vagrant.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, inline: cmd % interpolation_config
       end
     end
-    if !(params['provision']['commands']['always'].nil?) and params['provision']['commands']['always'].kind_of?(Array)
-      always_count = params['provision']['commands']['always'].length
+    if !(config['provision']['commands']['always'].nil?) and config['provision']['commands']['always'].kind_of?(Array)
+      always_count = config['provision']['commands']['always'].length
       yep_puts "Will run #{always_count} custom commands on boot"
-      params['provision']['commands']['always'].each do |cmd|
-        config.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, run: "always", inline: cmd
+      config['provision']['commands']['always'].each do |cmd|
+        vagrant.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, run: "always", inline: cmd % interpolation_config
       end
     end
   end
 
-  config.vm.post_up_message = <<-UPMSGEOF.gsub(/^ {4}/, '')
-    Your machine is available as http://#{params['vm']['hostname']}/
-    PHPMyAdmin URL: http://#{params['vm']['hostname']}/phpmyadmin
-    MySQL root password: #{params['mysql']['rootpass']}
+  vagrant.vm.post_up_message = <<-UPMSGEOF.gsub(/^ {4}/, '')
+    Your machine is available as http://#{config['vm']['hostname']}/
+    PHPMyAdmin URL: http://#{config['vm']['hostname']}/phpmyadmin
+    MySQL root password: #{config['mysql']['rootpass']}
   UPMSGEOF
 
 end
