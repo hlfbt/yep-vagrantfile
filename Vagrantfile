@@ -150,7 +150,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
 
   use_nfs = config['vm']['nfs']
   if use_nfs == "true" or (!!use_nfs == use_nfs and use_nfs == true)
-    vagrant.vm.provision :reload if is_provisioned
     vagrant.vm.synced_folder "./", "/vagrant", nfs: true
   else
     vagrant.vm.synced_folder "./", "/vagrant"
