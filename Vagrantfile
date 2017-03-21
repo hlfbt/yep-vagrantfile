@@ -101,7 +101,7 @@ end
 
 if yaml_config.is_a?(Hash)
   config = merge_recursively(defaults, yaml_config)
-  interpolation_config = flatten_hash(config).inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
+  flat_config = flatten_hash(config).inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
   if ARGV[0] == "up"
     puts "YAML Easy Provision enabled"
     puts "YAML Easy Provision couldn't find a 'Vagrantconfig.yml' file, so it assumed default values!" if !(File.exist?("#{root_path}/Vagrantconfig.yml"))
@@ -223,14 +223,16 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
       once_count = config['provision']['commands']['once'].length
       yep_puts "Will run #{once_count} custom commands on provision"
       config['provision']['commands']['once'].each do |cmd|
-        vagrant.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, inline: cmd % interpolation_config
+        cmd = cmd % flat_config
+        vagrant.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, inline: cmd
       end
     end
     if !(config['provision']['commands']['always'].nil?) and config['provision']['commands']['always'].kind_of?(Array)
       always_count = config['provision']['commands']['always'].length
       yep_puts "Will run #{always_count} custom commands on boot"
       config['provision']['commands']['always'].each do |cmd|
-        vagrant.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, run: "always", inline: cmd % interpolation_config
+        cmd = cmd % flat_config
+        vagrant.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, run: "always", inline: cmd
       end
     end
   end
