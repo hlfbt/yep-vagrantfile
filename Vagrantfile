@@ -191,8 +191,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     # This assumes php7 obviously, which is default on ubuntu 16.04+
     sed -i 's/memory_limit = .*/memory_limit = #{config['php']['memory_limit']}/' /etc/php/7.0/apache2/php.ini
     sed -i 's/upload_max_filesize = .*/upload_max_filesize = 10M/' /etc/php/7.0/apache2/php.ini
+    sed -i 's/upload_max_filesize = .*/upload_max_filesize = 10M/' /etc/php/7.0/cli/php.ini
     sed -i 's/post_max_size = .*/post_max_size = 10M/' /etc/php/7.0/apache2/php.ini
+    sed -i 's/post_max_size = .*/post_max_size = 10M/' /etc/php/7.0/cli/php.ini
     sed -i 's/max_execution_time = .*/max_execution_time = 240/' /etc/php/7.0/apache2/php.ini
+    sed -i 's/max_execution_time = .*/max_execution_time = 240/' /etc/php/7.0/cli/php.ini
 
     echo "Configuring apache"
     sed -e '14i\<Directory /var/www/html>\\n		AllowOverride All\\n	</Directory>\\n' /etc/apache2/sites-available/000-default.conf > /etc/apache2/sites-available/001-vagrant.conf
@@ -217,7 +220,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
   if !(config['mysql']['databases'].nil?) and config['mysql']['databases'].kind_of?(Array)
     yep_puts "Will create database(s) %s" % config['mysql']['databases'].join(", ") if !is_provisioned
     config['mysql']['databases'].each do |db|
-      vagrant.vm.provision "Creating Database: #{db}", type: "shell", keep_color: true, inline: "mysql -uroot -p#{config['mysql']['rootpass']} -e 'CREATE DATABASE `#{db}`;' >/dev/null"
+      vagrant.vm.provision "Creating Database: #{db}", type: "shell", keep_color: true, inline: "mysql -uroot -p'#{config['mysql']['rootpass']}' -e 'CREATE DATABASE IF NOT EXISTS `#{db}`;' >/dev/null"
     end
   end
 
