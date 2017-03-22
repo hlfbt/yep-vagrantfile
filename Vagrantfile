@@ -42,6 +42,9 @@ defaults = {
   },
   'apache' => {
     'webroot'  => "web"
+  },
+  'php' => {
+    'memory_limit' => "256M"
   }
 }
 
@@ -186,7 +189,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
 
     echo "Configuring php"
     # This assumes php7 obviously, which is default on ubuntu 16.04+
-    sed -i 's/memory_limit = .*/memory_limit = 256M/' /etc/php/7.0/apache2/php.ini
+    sed -i 's/memory_limit = .*/memory_limit = #{config['php']['memory_limit']}/' /etc/php/7.0/apache2/php.ini
     sed -i 's/upload_max_filesize = .*/upload_max_filesize = 10M/' /etc/php/7.0/apache2/php.ini
     sed -i 's/post_max_size = .*/post_max_size = 10M/' /etc/php/7.0/apache2/php.ini
     sed -i 's/max_execution_time = .*/max_execution_time = 240/' /etc/php/7.0/apache2/php.ini
@@ -202,37 +205,43 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     echo 'cd /vagrant' >> /home/vagrant/.bashrc
   PROVISIONEOF
 
-  if !is_provisioned and !(config['provision']['packages'].nil?) and config['provision']['packages'].length > 0
+  if !(config['provision']['packages'].nil?) and config['provision']['packages'].length > 0
     package_count = config['provision']['packages'].split(" ").length
-    yep_puts "Will install #{package_count} extra packages"
+    yep_puts "Will install #{package_count} extra packages" if !is_provisioned
     vagrant.vm.provision "Extra packages", type: "shell", inline: <<-PACKAGESEOF.gsub(/ {6}/, '')
-      echo "Installing extra packages"
+      echo 'Installing extra packages: #{config['provision']['packages']}'
       apt-get -y install #{config['provision']['packages']} > /dev/null
     PACKAGESEOF
   end
 
-  if !is_provisioned and !(config['mysql']['databases'].nil?) and config['mysql']['databases'].kind_of?(Array)
-    yep_puts "Will create database(s) %s" % config['mysql']['databases'].join(", ")
+  if !(config['mysql']['databases'].nil?) and config['mysql']['databases'].kind_of?(Array)
+    yep_puts "Will create database(s) %s" % config['mysql']['databases'].join(", ") if !is_provisioned
     config['mysql']['databases'].each do |db|
-      vagrant.vm.provision "Create Database: #{db}", type: "shell", keep_color: true, inline: "mysql -uroot -p#{config['mysql']['rootpass']} -e 'CREATE DATABASE `#{db}`;' >/dev/null"
+      vagrant.vm.provision "Creating Database: #{db}", type: "shell", keep_color: true, inline: "mysql -uroot -p#{config['mysql']['rootpass']} -e 'CREATE DATABASE `#{db}`;' >/dev/null"
     end
   end
 
   if !(config['provision']['commands'].nil?) and config['provision']['commands'].kind_of?(Hash)
-    if !is_provisioned and !(config['provision']['commands']['once'].nil?) and config['provision']['commands']['once'].kind_of?(Array)
+    if !(config['provision']['commands']['once'].nil?) and config['provision']['commands']['once'].kind_of?(Array)
       once_count = config['provision']['commands']['once'].length
-      yep_puts "Will run #{once_count} custom commands on provision"
+      yep_puts "Will run #{once_count} custom commands on provision" if !is_provisioned
       config['provision']['commands']['once'].each do |cmd|
         cmd = cmd % flat_config
-        vagrant.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, inline: cmd
+        vagrant.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, inline: <<-CMDEOF.gsub(/^ {10}/, '')
+          echo 'Running provisioning command: #{cmd}'
+          #{cmd}
+        CMDEOF
       end
     end
     if !(config['provision']['commands']['always'].nil?) and config['provision']['commands']['always'].kind_of?(Array)
       always_count = config['provision']['commands']['always'].length
       yep_puts "Will run #{always_count} custom commands on boot"
-      config['provision']['commands']['always'].each do |cmd|
+      config['provision']['commands']['always'].each_with_index do |cmd, idx|
         cmd = cmd % flat_config
-        vagrant.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, run: "always", inline: cmd
+        vagrant.vm.provision "Shell command \##{idx}", type: "shell", keep_color: true, run: "always", inline: <<-CMDEOF.gsub(/^ {10}/, '')
+          echo 'Running command: #{cmd}'
+          #{cmd}
+        CMDEOF
       end
     end
   end

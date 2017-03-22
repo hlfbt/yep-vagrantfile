@@ -34,3 +34,6 @@ mysql:
 
 apache:
   webroot:  "web"
+
+php:
+  memory_limit: 256M
