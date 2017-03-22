@@ -227,8 +227,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
       yep_puts "Will run #{once_count} custom commands on provision" if !is_provisioned
       config['provision']['commands']['once'].each do |cmd|
         cmd = cmd % flat_config
+        echoCmd = cmd.gsub("'", "'\"'\"'")
         vagrant.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, inline: <<-CMDEOF.gsub(/^ {10}/, '')
-          echo 'Running provisioning command: #{cmd}'
+          echo 'Running provisioning command: #{echoCmd}'
           #{cmd}
         CMDEOF
       end
@@ -238,8 +239,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
       yep_puts "Will run #{always_count} custom commands on boot"
       config['provision']['commands']['always'].each_with_index do |cmd, idx|
         cmd = cmd % flat_config
+        echoCmd = cmd.gsub("'", "'\"'\"'")
         vagrant.vm.provision "Shell command \##{idx}", type: "shell", keep_color: true, run: "always", inline: <<-CMDEOF.gsub(/^ {10}/, '')
-          echo 'Running command: #{cmd}'
+          echo 'Running command: #{echoCmd}'
           #{cmd}
         CMDEOF
       end
