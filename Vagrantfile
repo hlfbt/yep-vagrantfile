@@ -32,8 +32,8 @@ defaults = {
   'provision' => {
     'packages' => "",
     'commands' => {
-      'always' => "",
-      'once'   => ""
+      'always' => [],
+      'once'   => []
     }
   },
   'mysql' => {
@@ -225,26 +225,53 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
   end
 
   if !(config['provision']['commands'].nil?) and config['provision']['commands'].kind_of?(Hash)
-    if !(config['provision']['commands']['once'].nil?) and config['provision']['commands']['once'].kind_of?(Array)
-      once_count = config['provision']['commands']['once'].length
-      yep_puts "Will run #{once_count} custom commands on provision" if !is_provisioned
-      config['provision']['commands']['once'].each do |cmd|
+    once_cmds = config['provision']['commands']['once']
+    if !(once_cmds.nil?) and (once_cmds.kind_of?(Array) or once_cmds.kind_of?(Hash))
+      is_array = once_cmds.kind_of?(Array)
+      if !is_provisioned
+        if is_array
+          yep_puts "Will run #{once_cmds.length} custom commands on provision"
+        else
+          yep_puts "Will run custom commands on provision: #{once_cmds.keys.join(', ')}"
+        end
+      end
+      once_cmds.each_with_index do |(name,cmd),idx|
+        if is_array
+          cmd = name
+          prov_name = "Shell command \##{idx}"
+        else
+          prov_name = "Shell command '#{name}'"
+        end
         cmd = cmd % flat_config
-        echoCmd = cmd.gsub("'", "'\"'\"'")
-        vagrant.vm.provision "Shell command: #{cmd}", type: "shell", keep_color: true, inline: <<-CMDEOF.gsub(/^ {10}/, '')
-          echo 'Running provisioning command: #{echoCmd}'
+        echo_cmd = "echo '" + cmd.gsub("'", "'\"'\"'").split("\n").join("'\necho '") + "'"
+        vagrant.vm.provision prov_name, type: "shell", keep_color: true, inline: <<-CMDEOF.gsub(/^ {10}/, '')
+          echo 'Running provisioning command(s):'
+          #{echo_cmd}
           #{cmd}
         CMDEOF
       end
     end
-    if !(config['provision']['commands']['always'].nil?) and config['provision']['commands']['always'].kind_of?(Array)
-      always_count = config['provision']['commands']['always'].length
-      yep_puts "Will run #{always_count} custom commands on boot"
-      config['provision']['commands']['always'].each_with_index do |cmd, idx|
+
+    always_cmds = config['provision']['commands']['always']
+    if !(always_cmds.nil?) and (always_cmds.kind_of?(Array) or always_cmds.kind_of?(Hash))
+      is_array = always_cmds.kind_of?(Array)
+      if is_array
+        yep_puts "Will run #{always_cmds.length} custom commands on boot"
+      else
+        yep_puts "Will run custom commands on boot: #{always_cmds.keys.join(', ')}"
+      end
+      always_cmds.each_with_index do |(name,cmd),idx|
+        if is_array
+          cmd = name
+          prov_name = "Shell command \##{idx}"
+        else
+          prov_name = "Shell command '#{name}'"
+        end
         cmd = cmd % flat_config
-        echoCmd = cmd.gsub("'", "'\"'\"'")
-        vagrant.vm.provision "Shell command \##{idx}", type: "shell", keep_color: true, run: "always", inline: <<-CMDEOF.gsub(/^ {10}/, '')
-          echo 'Running command: #{echoCmd}'
+        echo_cmd = "echo '" + cmd.gsub("'", "'\"'\"'").split("\n").join("'\necho '") + "'"
+        vagrant.vm.provision prov_name, type: "shell", keep_color: true, run: "always", inline: <<-CMDEOF.gsub(/^ {10}/, '')
+          echo 'Running command(s):'
+          #{echo_cmd}
           #{cmd}
         CMDEOF
       end
@@ -256,5 +283,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     PHPMyAdmin URL: http://#{config['vm']['hostname']}/phpmyadmin
     MySQL root password: #{config['mysql']['rootpass']}
   UPMSGEOF
+
+  if !(config['misc']['upmessage'].nil?)
+    upmessage = config['misc']['upmessage'] % flat_config
+    vagrant.vm.post_up_message << "\n#{upmessage}"
+  end
 
 end
