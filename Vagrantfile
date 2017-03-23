@@ -241,7 +241,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
 
   if !(config['provision']['commands'].nil?) and config['provision']['commands'].kind_of?(Hash)
     once_cmds = config['provision']['commands']['once']
-    if !(once_cmds.nil?) and (once_cmds.kind_of?(Array) or once_cmds.kind_of?(Hash))
+    if !(once_cmds.nil?) and (once_cmds.kind_of?(Array) or once_cmds.kind_of?(Hash)) and once_cmds.length > 0
       is_array = once_cmds.kind_of?(Array)
       if !is_provisioned
         if is_array
@@ -268,7 +268,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     end
 
     always_cmds = config['provision']['commands']['always']
-    if !(always_cmds.nil?) and (always_cmds.kind_of?(Array) or always_cmds.kind_of?(Hash))
+    if !(always_cmds.nil?) and (always_cmds.kind_of?(Array) or always_cmds.kind_of?(Hash)) and always_cmds.length > 0
       is_array = always_cmds.kind_of?(Array)
       if is_array
         yep_puts "Will run #{always_cmds.length} custom commands on boot"
