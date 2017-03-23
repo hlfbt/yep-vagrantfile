@@ -7,6 +7,8 @@
 #  'mysql -uroot -p%{mysql.rootpass} %{mysql.databases[0]} < /vagrant/database_dump.sql'
 # This also means that you can define any custom configuration parameters in this configuration file and reference them inside the commands!
 
+# You can run 'vagrant status --debug-yep' to get a debug output of all configuration parameters to check your configuration!
+
 vagrant:
   name:     "inside"
   box:      "boxcutter/ubuntu1604"
@@ -17,20 +19,20 @@ vm:
   swap:     1024
   nfs:      true
 
-#provision:
-#  packages: "htop php-intl"
-#  commands:
-#    always:
-#      - 'echo "Hello! Todays date is $(date)"'
-#      - 'echo "Don't forget, you set PHPs memory_limit to %{php.memory_limit}!"'
-#      - 'echo "And your database is named %{mysql.databases[0]} :)"'
-#      - "cd /vagrant && sudo -u vagrant php app/console cache:clear"
-#    once:
-#      myprovision: |
-#        echo "Just a second, your box will be ready soon..."
-#        cd /vagrant
-#        sudo -u vagrant php bin/composer install
-#      clear_caches: "sudo -u vagrant php /vagrant/app/console cache:clear --env=dev"
+provision:
+  packages: "htop php-intl"
+  commands:
+    always:
+      - 'echo "Hello! Todays date is $(date)"'
+      - "echo \"Don't forget, you set PHPs memory_limit to %{php.memory_limit}!\""
+      - echo "And your database is named %{mysql.databases[0]} :)"
+      - "cd /vagrant && sudo -u vagrant php app/console cache:clear"
+    once:
+      myprovision: |
+        echo "Just a second, your box will be ready soon..."
+        cd /vagrant
+        sudo -u vagrant php bin/composer install
+      clear_caches: "sudo -u vagrant php /vagrant/app/console cache:clear --env=dev"
 
 mysql:
   rootpass: "test123"
@@ -43,5 +45,5 @@ apache:
 php:
   memory_limit: 256M
 
-#misc:
-#  upmessage: "This will be displayed alongside the usual vagrant up message (...Your machine is available under...)"
+misc:
+  upmessage: "This will be displayed alongside the usual vagrant up message (...Your machine is available under...)"

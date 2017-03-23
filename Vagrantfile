@@ -20,31 +20,34 @@ basename = File.basename(root_path)
 # Load Vagrantconfig.yml configuration, or assume defaults if not present
 defaults = {
   'vagrant' => {
-    'name'     => basename,
-    'box'      => "boxcutter/ubuntu1604"  # The ubuntu/xenial64 box has a bunch of problems with interfaces etc.
+    'name'      => basename,
+    'box'       => "boxcutter/ubuntu1604"  # The ubuntu/xenial64 box has a bunch of problems with interfaces etc.
   },
   'vm' => {
-    'hostname' => "local.dev",
-    'memory'   => 1024,
-    'swap'     => 1024,
-    'nfs'      => true
+    'hostname'  => "local.dev",
+    'memory'    => 1024,
+    'swap'      => 1024,
+    'nfs'       => true
   },
   'provision' => {
-    'packages' => "",
-    'commands' => {
-      'always' => [],
-      'once'   => []
+    'packages'  => "",
+    'commands'  => {
+      'always'  => [],
+      'once'    => []
     }
   },
   'mysql' => {
-    'rootpass' => "test123",
+    'rootpass'  => "test123",
     'databases' => []
   },
   'apache' => {
-    'webroot'  => "web"
+    'webroot'   => "web"
   },
   'php' => {
     'memory_limit' => "256M"
+  },
+  'misc' => {
+    'upmessage' => ""
   }
 }
 
@@ -116,6 +119,18 @@ end
 
 is_provisioned = File.exist?("#{root_path}/.vagrant/machines/#{config['vagrant']['name']}/virtualbox/action_provision")
 
+if ARGV.length > 1 and ARGV[1] == '--debug-yep'
+  require 'pp'
+  puts "root_path: #{root_path}"
+  puts "basename: #{basename}"
+  puts "is_provision: #{is_provisioned}"
+  puts "\nconfig:"
+  pp config
+  puts "\nflat_config:"
+  pp flat_config
+  puts ""
+  exit 0
+end
 
 VAGRANTFILE_API_VERSION = "2"
 
@@ -284,8 +299,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     MySQL root password: #{config['mysql']['rootpass']}
   UPMSGEOF
 
-  if !(config['misc']['upmessage'].nil?)
-    upmessage = config['misc']['upmessage'] % flat_config
+  if !(config['misc']['upmessage'].nil?) and config['misc']['upmessage'].to_s.length > 0
+    upmessage = config['misc']['upmessage'].to_s % flat_config
     vagrant.vm.post_up_message << "\n#{upmessage}"
   end
 
