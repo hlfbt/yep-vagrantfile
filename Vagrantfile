@@ -253,9 +253,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
       once_cmds.each_with_index do |(name,cmd),idx|
         if is_array
           cmd = name
-          prov_name = "Shell command \##{idx}"
+          prov_name = "shell_\##{idx}"
         else
-          prov_name = "Shell command '#{name}'"
+          prov_name = name
         end
         cmd = cmd % flat_config
         echo_cmd = "echo '" + cmd.gsub("'", "'\"'\"'").split("\n").join("'\necho '") + "'"
@@ -278,9 +278,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
       always_cmds.each_with_index do |(name,cmd),idx|
         if is_array
           cmd = name
-          prov_name = "Shell command \##{idx}"
+          prov_name = "shell_\##{idx}"
         else
-          prov_name = "Shell command '#{name}'"
+          prov_name = name
         end
         cmd = cmd % flat_config
         echo_cmd = "echo '" + cmd.gsub("'", "'\"'\"'").split("\n").join("'\necho '") + "'"
