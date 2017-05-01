@@ -20,7 +20,7 @@ basename = File.basename(root_path)
 # Load Vagrantconfig.yml configuration, or assume defaults if not present
 defaults = {
   'vagrant' => {
-    'name'      => basename,
+    'name'      => "default",
     'box'       => "boxcutter/ubuntu1604"  # The ubuntu/xenial64 box has a bunch of problems with interfaces etc.
   },
   'vm' => {
