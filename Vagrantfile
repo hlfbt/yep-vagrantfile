@@ -176,14 +176,15 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
   # Shut the "stdin: is not a tty" and "mesg: ttyname failed : Inappropriate ioctl for device" warnings up
   vagrant.vm.provision :shell, privileged: true, inline: "(grep -q 'mesg n' /root/.profile && sed -i '/mesg n/d' /root/.profile && echo 'Ignore the previous stdin/mesg error, fixing this now...') || exit 0;"
 
-  if config['vm']['swap'].to_i > 0
+  config['vm']['swap'] = config['vm']['swap'].to_i
+  if config['vm']['swap'] > 0
     vagrant.vm.provision "Swap creation", type: "shell", run: "always", privileged: true, inline: <<-SWAPEOF.gsub(/^ {6}/, '')
       echo -n "Creating swap"
       { \
         { \
-          [ ! -e /var/swap.1 ] \
+          [ ! -e /var/swap.1 -o "$(du -m /var/swap.1 | grep -o '^[0-9]*' | head -c-2)" != "$(head -c-2 <<< "#{config['vm']['swap']}")" ] \
           && { \
-            /bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=1024 status=none \
+            /bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=#{config['vm']['swap']} status=none \
             && chmod 600 /var/swap.1 \
             && /sbin/mkswap /var/swap.1 >/dev/null; \
           } \
