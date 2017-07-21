@@ -179,12 +179,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
   config['vm']['swap'] = config['vm']['swap'].to_i
   if config['vm']['swap'] > 0
     vagrant.vm.provision "Swap creation", type: "shell", run: "always", privileged: true, inline: <<-SWAPEOF.gsub(/^ {6}/, '')
-      echo -n "Creating swap"
       { \
         { \
           [ ! -e /var/swap.1 -o "$(du -m /var/swap.1 | grep -o '^[0-9]*' | head -c-2)" != "$(head -c-2 <<< "#{config['vm']['swap']}")" ] \
           && { \
-            /bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=#{config['vm']['swap']} status=none \
+            echo -n "Creating swap of size #{config['vm']['swap']}M" \
+            && /bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=#{config['vm']['swap']} status=none \
             && chmod 600 /var/swap.1 \
             && /sbin/mkswap /var/swap.1 >/dev/null; \
           } \
@@ -192,7 +192,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
         } \
         && /sbin/swapoff -a > /dev/null \
         && /sbin/swapon /var/swap.1 >/dev/null \
-        || echo "error creating swap" >&2; \
+        || echo "error creating/enabling swap" >&2; \
       } \
       || true;
     SWAPEOF
