@@ -13,6 +13,7 @@
 # vagrant plugin install vagrant-vbguest
 
 require 'yaml'
+require 'ipaddr'
 
 root_path = File.expand_path(File.dirname(__FILE__))
 basename = File.basename(root_path)
@@ -22,6 +23,9 @@ defaults = {
   'vagrant' => {
     'name'      => "default",
     'box'       => "boxcutter/ubuntu1604"  # The ubuntu/xenial64 box has a bunch of problems with interfaces etc.
+  },
+  'network' => {
+    'dhcp'      => true
   },
   'vm' => {
     'hostname'  => "local.dev",
@@ -123,7 +127,7 @@ if ARGV.length > 1 and ARGV[1] == '--debug-yep'
   require 'pp'
   puts "root_path: #{root_path}"
   puts "basename: #{basename}"
-  puts "is_provision: #{is_provisioned}"
+  puts "is_provisioned: #{is_provisioned}"
   puts "\nconfig:"
   pp config
   puts "\nflat_config:"
@@ -139,7 +143,41 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
   vagrant.vm.box = config['vagrant']['box']
   vagrant.vm.box_check_update = false
   vagrant.vm.define config['vagrant']['name']
-  vagrant.vm.network "private_network", type: "dhcp"
+
+  # Parse and set the correct network settings
+  use_dhcp = config['network']['dhcp']
+  use_dhcp = (use_dhcp == "true" or (!!use_dhcp == use_dhcp and use_dhcp == true))
+  network_config = { :type => "static" }
+  network_config[:type] = "dhcp" if use_dhcp
+  if !(config['network']['ip'].nil?)
+    network_ip = IPAddr.new(config['network']['ip'])
+    ip_addresses = network_ip.to_range().first(4)
+    if ip_addresses.size == 1
+      if use_dhcp
+        network_config[:dhcp_ip] = ip_addresses[0].to_s
+        network_config[:dhcp_lower] = ip_addresses[0].succ.to_s
+        network_config[:dhcp_upper] = ip_addresses[0].mask(24).to_range().last(2)[0].to_s
+      else
+        network_config[:ip] = ip_addresses[0].to_s
+      end
+    elsif ip_addresses.size == 4
+    main_ip = config['network']['ip'].split("/")[0]
+      main_ip = ip_addresses[1].to_s if main_ip == ip_addresses[0].to_s
+      network_config[:netmask] = network_ip.inspect.split("/")[1].chomp(">")
+      if use_dhcp
+        network_config[:dhcp_ip] = main_ip
+        network_config[:dhcp_lower] = ((ip_addresses[1].to_s == main_ip) ? ip_addresses[2].to_s : ip_addresses[1].to_s)
+        network_config[:dhcp_upper] = network_ip.to_range().last(2)[0].to_s
+      else
+        network_config[:ip] = main_ip
+      end
+    elsif ip_addresses.size != 0
+      fail Vagrant::Errors::VagrantError.new, "The network.ip parameter only accepts either a single IP, or a range of at least 4 IP addresses."
+    end
+  elsif !use_dhcp
+    fail Vagrant::Errors:VagrantError.new, "Network set to static but no IP address was provided."
+  end
+  vagrant.vm.network "private_network", **network_config
 
   # Automatically manage /etc/hosts on hosts and guests
   if Vagrant.has_plugin? 'vagrant-hostmanager'
@@ -167,11 +205,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
   end
 
   use_nfs = config['vm']['nfs']
-  if use_nfs == "true" or (!!use_nfs == use_nfs and use_nfs == true)
-    vagrant.vm.synced_folder "./", "/vagrant", nfs: true
-  else
-    vagrant.vm.synced_folder "./", "/vagrant"
-  end
+  use_nfs = (use_nfs == "true" or (!!use_nfs == use_nfs and use_nfs == true))
+  synced_folder_config = {}
+  synced_folder_config[:nfs] = true if use_nfs
+  vagrant.vm.synced_folder "./", "/vagrant", **synced_folder_config
 
   # Shut the "stdin: is not a tty" and "mesg: ttyname failed : Inappropriate ioctl for device" warnings up
   vagrant.vm.provision :shell, privileged: true, inline: "(grep -q 'mesg n' /root/.profile && sed -i '/mesg n/d' /root/.profile && echo 'Ignore the previous stdin/mesg error, fixing this now...') || exit 0;"

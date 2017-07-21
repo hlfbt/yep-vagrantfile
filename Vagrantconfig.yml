@@ -13,6 +13,10 @@ vagrant:
   name:     "inside"
   box:      "boxcutter/ubuntu1604"
 
+network:
+  dhcp:     true
+  ip:       "10.10.10.1/24"
+
 vm:
   hostname: "inside.dev"
   memory:   1024
