@@ -30,8 +30,10 @@ defaults = {
   'vm' => {
     'hostname'  => "local.dev",
     'memory'    => 1024,
-    'swap'      => 1024,
-    'nfs'       => true
+    'swap'      => 1024
+  },
+  'synced_folders' => {
+    'folders'   => []
   },
   'provision' => {
     'packages'  => "",
@@ -204,11 +206,45 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     vb.customize ["modifyvm", :id, "--memory", config['vm']['memory']]
   end
 
-  use_nfs = config['vm']['nfs']
-  use_nfs = (use_nfs == "true" or (!!use_nfs == use_nfs and use_nfs == true))
-  synced_folder_config = {}
-  synced_folder_config[:nfs] = true if use_nfs
-  vagrant.vm.synced_folder "./", "/vagrant", **synced_folder_config
+  synced_folders_default = {}
+  synced_folders_default[:type] = config['synced_folders']['type'] if !(config['synced_folders']['type'].nil?)
+  vagrant.vm.synced_folder "./", "/vagrant", **synced_folders_default
+  synced_folders_msg = "Will mount folder#{'s' if config['synced_folders']['folders'].size > 1}: "
+  parse_folder = lambda do |key, val = nil, args: {}|
+    host = nil
+    guest = nil
+    if val.nil?
+      if key.kind_of?(Hash)
+        host = key['host'] if !(key['host'].nil?)
+        guest = key['guest'] if !(key['guest'].nil?)
+        args[:type] = key['type'] if !(key['type'].nil?)
+      elsif key.kind_of?(Array)
+        host = key[0] if key.size > 0
+        guest = key[1] if key.size > 1
+        args[:type] = key[2] if key.size > 2
+      end
+    elsif val.kind_of?(String)
+      host = key
+      guest = val
+    else
+      return parse_folder.call val.unshift(key)
+    end
+    [host, guest, args]
+  end
+  add_folder = lambda do |key, val|
+    (host, guest, args) = parse_folder.call(key, val, :args => synced_folders_default)
+    if host.nil? or guest.nil?
+      fail Vagrant::Errors::VagrantError.new, "Invalid folder parameter: " + ((val.nil?) ? "#{key}" : "#{key}: #{val}") + ". Expects either an array (['/path/on/host', '/path/on/guest', 'optional mount type']), a set ({'host': '/path/on/host', 'guest': '/path/on/guest', 'type': 'optional mount type'}) or a key / value pair ('/path/on/host': '/path/on/guest')."
+    end
+    synced_folders_msg += "#{host} => #{guest} [" + args.map{|k,v| "#{k}=#{v}"}.join(', ') + "], "
+    vagrant.vm.synced_folder host, guest, **args
+  end
+  if config['synced_folders']['folders'].kind_of?(Hash)
+    config['synced_folders']['folders'].each { |key, val| add_folder.call key, val }
+  elsif config['synced_folders']['folders'].kind_of?(Array)
+    config['synced_folders']['folders'].each { |key| add_folder.call key, nil }
+  end
+  yep_puts synced_folders_msg.chomp(", ") if !(config['synced_folders']['folders'].empty?)
 
   # Shut the "stdin: is not a tty" and "mesg: ttyname failed : Inappropriate ioctl for device" warnings up
   vagrant.vm.provision :shell, privileged: true, inline: "(grep -q 'mesg n' /root/.profile && sed -i '/mesg n/d' /root/.profile && echo 'Ignore the previous stdin/mesg error, fixing this now...') || exit 0;"

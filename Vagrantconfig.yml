@@ -21,7 +21,15 @@ vm:
   hostname: "inside.dev"
   memory:   1024
   swap:     1024
-  nfs:      true
+
+synced_folders:
+  type:     "nfs"
+  folders:
+    - ["/opt", "/vagrant/opt"]
+    - ["./web", "/var/www", "rsync"]
+    - host: "/home"
+      guest: "/home"
+      type: "sshfs"
 
 provision:
   packages: "htop php-intl"
