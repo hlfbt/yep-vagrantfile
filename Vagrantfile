@@ -91,10 +91,11 @@ def merge_recursively(a, b)
   end
 end
 
+$debug_yep = (ARGV.length > 1 and ARGV[1] == '--debug-yep')
 $yep_said_intro = false
 def yep_puts(msg, only_on_cmd = "up")
   only_on_cmd = only_on_cmd.to_s
-  if only_on_cmd.length == 0 or ARGV[0] == only_on_cmd
+  if only_on_cmd.length == 0 or ARGV[0] == only_on_cmd or $debug_yep
     if !(defined? $yep_said_intro) or (!!$yep_said_intro) == false
       $yep_said_intro = true
       puts "YAML Easy Provision says:"
@@ -125,7 +126,7 @@ end
 
 is_provisioned = File.exist?("#{root_path}/.vagrant/machines/#{config['vagrant']['name']}/virtualbox/action_provision")
 
-if ARGV.length > 1 and ARGV[1] == '--debug-yep'
+if $debug_yep
   require 'pp'
   puts "root_path: #{root_path}"
   puts "basename: #{basename}"
@@ -135,7 +136,6 @@ if ARGV.length > 1 and ARGV[1] == '--debug-yep'
   puts "\nflat_config:"
   pp flat_config
   puts ""
-  exit 0
 end
 
 VAGRANTFILE_API_VERSION = "2"
@@ -389,4 +389,5 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     vagrant.vm.post_up_message << "\n#{upmessage}"
   end
 
+  exit 0 if $debug_yep
 end
