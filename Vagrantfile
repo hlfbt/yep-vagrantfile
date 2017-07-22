@@ -156,8 +156,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     ip_addresses = network_ip.to_range().first(4)
     if ip_addresses.size == 1
       if use_dhcp
-        network_config[:dhcp_ip] = ip_addresses[0].to_s
-        network_config[:dhcp_lower] = ip_addresses[0].succ.to_s
+        network_config[:adapter_ip] = ip_addresses[0].to_s
+        network_config[:dhcp_ip] = ip_addresses[0].succ.to_s
+        network_config[:dhcp_lower] = ip_addresses[0].succ.succ.to_s
         network_config[:dhcp_upper] = ip_addresses[0].mask(24).to_range().last(2)[0].to_s
       else
         network_config[:ip] = ip_addresses[0].to_s
@@ -167,8 +168,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
       main_ip = ip_addresses[1].to_s if main_ip == ip_addresses[0].to_s
       network_config[:netmask] = network_ip.inspect.split("/")[1].chomp(">")
       if use_dhcp
-        network_config[:dhcp_ip] = main_ip
-        network_config[:dhcp_lower] = ((ip_addresses[1].to_s == main_ip) ? ip_addresses[2].to_s : ip_addresses[1].to_s)
+        network_config[:adapter_ip] = main_ip
+        network_config[:dhcp_ip] = ((ip_addresses[1].to_s == main_ip) ? ip_addresses[2].to_s : ip_addresses[1].to_s)
+        network_config[:dhcp_lower] = ((ip_addresses[2].to_s == network_config[:dhcp_ip]) ? ip_addresses[3].to_s : ip_addresses[2].to_s)
         network_config[:dhcp_upper] = network_ip.to_range().last(2)[0].to_s
       else
         network_config[:ip] = main_ip
