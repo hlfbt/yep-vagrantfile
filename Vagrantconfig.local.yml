@@ -1,0 +1,13 @@
+# This configuration file is supposed to be used as a local override and should never be commited to a repository!
+# Everything configured here will override any configuration in the Vagranconfig.yml.
+# This can be usefull for changes that a developper may only need on a single machine (f.i. disabling nfs on a windows host).
+
+network:
+  dhcp:     false
+  ip:       172.28.128.23
+
+vm:
+  memory:   2048
+
+synced_folders:
+  type:     "sshfs"

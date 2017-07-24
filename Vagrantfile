@@ -112,12 +112,20 @@ rescue Exception => e
   fail Vagrant::Errors::VagrantError.new, "The Vagrantconfig.yml config file contains syntax errors:\n" + e.message
 end
 
+yaml_local_config = Hash.new
+begin
+  yaml_local_config = YAML.load_file "#{root_path}/Vagrantconfig.local.yml" if File.exist?("#{root_path}/Vagrantconfig.local.yml")
+rescue Exception => e
+  fail Vagrant::Errors::VagrantError.new, "The Vagrantconfig.local.yml config file contains syntax errors:\n" + e.message
+end
+
 if yaml_config.is_a?(Hash)
   config = merge_recursively(defaults, yaml_config)
+  config = merge_recursively(config, yaml_local_config) if yaml_local_config.is_a?(Hash)
   flat_config = flatten_hash(config).inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}
   if ARGV[0] == "up"
     puts "YAML Easy Provision enabled"
-    puts "YAML Easy Provision couldn't find a 'Vagrantconfig.yml' file, so it assumed default values!" if !(File.exist?("#{root_path}/Vagrantconfig.yml"))
+    puts "YAML Easy Provision couldn't find a 'Vagrantconfig.yml' or 'Vagrantconfig.local.yml' file, so it assumed default values!" if !(File.exist?("#{root_path}/Vagrantconfig.yml") || File.exist?("#{root_path}/Vagrantconfig.local.yml"))
   end
 else
   yaml_error = yaml_config.to_s
@@ -131,6 +139,10 @@ if $debug_yep
   puts "root_path: #{root_path}"
   puts "basename: #{basename}"
   puts "is_provisioned: #{is_provisioned}"
+  puts "\nVagrantconfig.yml:"
+  if File.exist?("#{root_path}/Vagrantconfig.yml") then pp yaml_config else puts "File not found." end
+  puts "\nVagrantconfig.local.yml:"
+  if File.exist?("#{root_path}/Vagrantconfig.local.yml") then pp yaml_local_config else puts "File not found." end
   puts "\nconfig:"
   pp config
   puts "\nflat_config:"
