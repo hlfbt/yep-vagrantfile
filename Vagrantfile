@@ -1,3 +1,5 @@
+#!env ruby
+#
 # ----------
 # YAML Easy Provision powered Vagrantfile
 # ----------
@@ -6,7 +8,7 @@
 #
 # Description: The YEP system allows for easy peasy box and provisioning configuration
 #              with the help of a pretty, easy to read YAML configuration file!
-
+#
 # ATTENTION: please install the hostmanager plugin using the following command:
 # vagrant plugin install vagrant-hostmanager
 # Also recommended for no-pain vboxguestadditions management:
