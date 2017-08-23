@@ -270,7 +270,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     vagrant.vm.provision "Swap creation", type: "shell", run: "always", privileged: true, inline: <<-SWAPEOF.gsub(/^ {6}/, '')
       { \
         { \
-          [ ! -e /var/swap.1 -o "$(du -m /var/swap.1 | grep -o '^[0-9]*' | head -c-2)" != "$(head -c-2 <<< "#{config['vm']['swap']}")" ] \
+          ( [ ! -e /var/swap.1 ] || [ "$(du -m /var/swap.1 | grep -o '^[0-9]*' | head -c-2)" != "$(head -c-2 <<< "#{config['vm']['swap']}")" ] ) \
           && { \
             echo -n "Creating swap of size #{config['vm']['swap']}M" \
             && /bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=#{config['vm']['swap']} status=none \
