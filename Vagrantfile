@@ -289,6 +289,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
 
   vagrant.vm.provision "Base provisioning", type: "shell", inline: <<-PROVISIONEOF.gsub(/^ {4}/, '')
     echo "Configuring packages"
+    # This is to ensure that no misleading 'unable to re-open stdin' warnings show up in big red lettering!
+    export DEBIAN_FRONTEND=noninteractive
+
     debconf-set-selections <<< 'mysql-server mysql-server/root_password password #{config['mysql']['rootpass']}'
     debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password #{config['mysql']['rootpass']}'
     debconf-set-selections <<< 'phpmyadmin phpmyadmin/dbconfig-install boolean true'
@@ -329,6 +332,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     yep_puts "Will install #{package_count} extra packages" if !is_provisioned
     vagrant.vm.provision "Extra packages", type: "shell", inline: <<-PACKAGESEOF.gsub(/ {6}/, '')
       echo 'Installing extra packages: #{config['provision']['packages']}'
+      export DEBIAN_FRONTEND=noninteractive
       apt-get -y install #{config['provision']['packages']} > /dev/null
     PACKAGESEOF
   end
