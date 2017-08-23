@@ -301,7 +301,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     debconf-set-selections <<< 'phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2'
 
     echo "Installing base packages (this may take a while...)"
-    apt-get update > /dev/null && apt-get -y install apache2 libapache2-mod-php php php-cli php-curl php-gd php-zip php-mcrypt php-mysql mysql-server phpmyadmin graphicsmagick unzip git > /dev/null
+    apt-get update > /dev/null && apt-get -y install apache2 libapache2-mod-php php php-cli php-curl php-gd php-intl php-zip php-mcrypt php-mysql mysql-server phpmyadmin graphicsmagick htop unzip curl git > /dev/null
 
     echo "Linking web-root"
     rm -rf /var/www/html && ln -s /vagrant/#{config['apache']['webroot']} /var/www/html
