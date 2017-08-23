@@ -263,16 +263,16 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
   yep_puts synced_folders_msg.chomp(", ") if !(config['synced_folders']['folders'].empty?)
 
   # Shut the "stdin: is not a tty" and "mesg: ttyname failed : Inappropriate ioctl for device" warnings up
-  vagrant.vm.provision :shell, privileged: true, inline: "(grep -q 'mesg n' /root/.profile && sed -i '/mesg n/d' /root/.profile && echo 'Ignore the previous stdin/mesg error, fixing this now...') || exit 0;"
+  vagrant.vm.provision :shell, keep_color: true, privileged: true, inline: "(grep -q 'mesg n' /root/.profile && sed -i '/mesg n/d' /root/.profile && echo -e \"\e[1;93mIgnore the previous stdin/mesg error, fixing this now...\e[0m\") || exit 0;"
 
   config['vm']['swap'] = config['vm']['swap'].to_i
   if config['vm']['swap'] > 0
-    vagrant.vm.provision "Swap creation", type: "shell", run: "always", privileged: true, inline: <<-SWAPEOF.gsub(/^ {6}/, '')
+    vagrant.vm.provision "Swap creation", type: "shell", run: "always", keep_color: true, privileged: true, inline: <<-SWAPEOF.gsub(/^ {6}/, '')
       { \
         { \
           ( [ ! -e /var/swap.1 ] || [ "$(du -m /var/swap.1 | grep -o '^[0-9]*' | head -c-2)" != "$(head -c-2 <<< "#{config['vm']['swap']}")" ] ) \
           && { \
-            echo -n "Creating swap of size #{config['vm']['swap']}M" \
+            echo -ne "\e[1;93mCreating swap of size #{config['vm']['swap']}M\e[0m" \
             && /bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=#{config['vm']['swap']} status=none \
             && chmod 600 /var/swap.1 \
             && /sbin/mkswap /var/swap.1 >/dev/null; \
@@ -281,17 +281,17 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
         } \
         && /sbin/swapoff -a > /dev/null \
         && /sbin/swapon /var/swap.1 >/dev/null \
-        || echo "error creating/enabling swap" >&2; \
+        || echo "\e[1;91merror creating/enabling swap\e[0m" >&2; \
       } \
       || true;
     SWAPEOF
   end
 
-  vagrant.vm.provision "Base provisioning", type: "shell", inline: <<-PROVISIONEOF.gsub(/^ {4}/, '')
-    echo "Configuring packages"
+  vagrant.vm.provision "Base provisioning", type: "shell", keep_color: true, inline: <<-PROVISIONEOF.gsub(/^ {4}/, '')
     # This is to ensure that no misleading 'unable to re-open stdin' warnings show up in big red lettering!
     export DEBIAN_FRONTEND=noninteractive
 
+    echo -e "\e[1;96mConfiguring packages\e[0m"
     debconf-set-selections <<< 'mysql-server mysql-server/root_password password #{config['mysql']['rootpass']}'
     debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password #{config['mysql']['rootpass']}'
     debconf-set-selections <<< 'phpmyadmin phpmyadmin/dbconfig-install boolean true'
@@ -300,13 +300,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/app-pass password'
     debconf-set-selections <<< 'phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2'
 
-    echo "Installing base packages (this may take a while...)"
-    apt-get update > /dev/null && apt-get -y install apache2 libapache2-mod-php php php-cli php-curl php-gd php-intl php-zip php-mcrypt php-mysql mysql-server phpmyadmin graphicsmagick htop unzip curl git > /dev/null
+    echo "\e[1;96mInstalling base packages (this may take a while...)\e[0m"
+    apt-get update > /dev/null && apt-get -y install apache2 libapache2-mod-php php php-cli php-curl php-gd php-intl php-zip php-mcrypt php-mysql mysql-server phpmyadmin graphicsmagick htop unzip curl git 2>&1 > /dev/null | grep --line-buffered -v 'Extracting templates from packages: [0-9]\{2,3\}%' | sed -e 's/^/\x1b[1;91m/' -e 's/$/\x1b[0m/' >&2
 
-    echo "Linking web-root"
+    echo "\e[1;96mLinking web-root\e[0m"
     rm -rf /var/www/html && ln -s /vagrant/#{config['apache']['webroot']} /var/www/html
 
-    echo "Configuring php"
+    echo "\e[1;96mConfiguring php\e[0m"
     # This assumes php7 obviously, which is default on ubuntu 16.04+
     sed -i 's/memory_limit = .*/memory_limit = #{config['php']['memory_limit']}/' /etc/php/7.0/apache2/php.ini
     sed -i 's/upload_max_filesize = .*/upload_max_filesize = 10M/' /etc/php/7.0/apache2/php.ini
@@ -316,7 +316,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     sed -i 's/max_execution_time = .*/max_execution_time = 240/' /etc/php/7.0/apache2/php.ini
     sed -i 's/max_execution_time = .*/max_execution_time = 240/' /etc/php/7.0/cli/php.ini
 
-    echo "Configuring apache"
+    echo "\e[1;96mConfiguring apache\e[0m"
     # Add AllowOverride to the default vhost configuration
     sed -e '14i \\	<Directory /var/www/html>\\n		AllowOverride All\\n	</Directory>\\n' /etc/apache2/sites-available/000-default.conf > /etc/apache2/sites-available/001-vagrant.conf
     echo >> /etc/apache2/sites-available/001-vagrant.conf
@@ -335,8 +335,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
   if !(config['provision']['packages'].nil?) and config['provision']['packages'].length > 0
     package_count = config['provision']['packages'].split(" ").length
     yep_puts "Will install #{package_count} extra packages" if !is_provisioned
-    vagrant.vm.provision "Extra packages", type: "shell", inline: <<-PACKAGESEOF.gsub(/ {6}/, '')
-      echo 'Installing extra packages: #{config['provision']['packages']}'
+    vagrant.vm.provision "Extra packages", type: "shell", keep_color: true, inline: <<-PACKAGESEOF.gsub(/ {6}/, '')
+      echo '\e[1;93mInstalling extra packages: #{config['provision']['packages']}\e[0m'
       export DEBIAN_FRONTEND=noninteractive
       apt-get -y install #{config['provision']['packages']} > /dev/null
     PACKAGESEOF
