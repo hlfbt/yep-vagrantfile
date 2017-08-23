@@ -317,7 +317,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     sed -i 's/max_execution_time = .*/max_execution_time = 240/' /etc/php/7.0/cli/php.ini
 
     echo "Configuring apache"
-    sed -e '14i\<Directory /var/www/html>\\n		AllowOverride All\\n	</Directory>\\n' /etc/apache2/sites-available/000-default.conf > /etc/apache2/sites-available/001-vagrant.conf
+    # Add AllowOverride to the default vhost configuration
+    sed -e '14i \\	<Directory /var/www/html>\\n		AllowOverride All\\n	</Directory>\\n' /etc/apache2/sites-available/000-default.conf > /etc/apache2/sites-available/001-vagrant.conf
+    echo >> /etc/apache2/sites-available/001-vagrant.conf
+    # Add SSL vhost too
+    sed -e '16i \\		<Directory /var/www/html>\\n			AllowOverride All\\n		</Directory>\\n' /etc/apache2/sites-available/default-ssl.conf >> /etc/apache2/sites-available/001-vagrant.conf
+    a2enmod ssl > /dev/null
     a2enmod rewrite > /dev/null
     a2dissite 000-default > /dev/null
     a2ensite 001-vagrant > /dev/null
