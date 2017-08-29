@@ -93,6 +93,7 @@ def merge_recursively(a, b)
   end
 end
 
+$verbose_yep = (ENV.has_key?("YEP_VERBOSE") and (!!ENV["YEP_VERBOSE"]))
 $debug_yep = (ARGV.length > 1 and ARGV[1] == '--debug-yep')
 $yep_said_intro = false
 def yep_puts(msg, only_on_cmd = "up")
@@ -368,7 +369,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
           prov_name = name
         end
         cmd = cmd % flat_config
-        echo_cmd = "echo '" + cmd.gsub("'", "'\"'\"'").split("\n").join("'\necho '") + "'"
+        echo_cmd = $verbose_yep ? "echo '" + cmd.gsub("'", "'\"'\"'").split("\n").join("'\necho '") + "'" : ""
         vagrant.vm.provision prov_name, type: "shell", keep_color: true, inline: <<-CMDEOF.gsub(/^ {10}/, '')
           echo 'Running provisioning command(s):'
           #{echo_cmd}
@@ -393,7 +394,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
           prov_name = name
         end
         cmd = cmd % flat_config
-        echo_cmd = "echo '" + cmd.gsub("'", "'\"'\"'").split("\n").join("'\necho '") + "'"
+        echo_cmd = $verbose_yep ? "echo '" + cmd.gsub("'", "'\"'\"'").split("\n").join("'\necho '") + "'" : ""
         vagrant.vm.provision prov_name, type: "shell", keep_color: true, run: "always", inline: <<-CMDEOF.gsub(/^ {10}/, '')
           echo 'Running command(s):'
           #{echo_cmd}
