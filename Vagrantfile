@@ -161,6 +161,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
   vagrant.vm.box_check_update = false
   vagrant.vm.define config['vagrant']['name']
 
+  if config.has_key?("ssh")
+    config['ssh'].each { |key, val| vagrant.ssh.send("#{key}=", val) }
+  end
+
   # Parse and set the correct network settings
   use_dhcp = config['network']['dhcp']
   use_dhcp = (use_dhcp == "true" or (!!use_dhcp == use_dhcp and use_dhcp == true))

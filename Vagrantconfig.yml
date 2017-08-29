@@ -22,6 +22,10 @@ vm:
   memory:   1024
   swap:     1024
 
+ssh:
+  username: "vagrant"
+  password: "vagrant"
+
 synced_folders:
   type:     "nfs"
   folders:
