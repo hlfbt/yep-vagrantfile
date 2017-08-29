@@ -11,3 +11,4 @@ vm:
 
 synced_folders:
   type:     "sshfs"
+  group:    "www-data"

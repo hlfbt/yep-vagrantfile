@@ -227,8 +227,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     vb.customize ["modifyvm", :id, "--memory", config['vm']['memory']]
   end
 
-  synced_folders_default = {}
-  synced_folders_default[:type] = config['synced_folders']['type'] if !(config['synced_folders']['type'].nil?)
+  synced_folders_default = config['synced_folders'].each_with_object({}){|(k,v), h| h[k.to_sym] = v}
+  synced_folders_default.delete(:folders)
+  yep_puts "Will use custom shared folder defaults: " + synced_folders_default.map{|k,v| "#{k}=#{v}"}.join(", ") if !(synced_folders_default.empty?)
   vagrant.vm.synced_folder "./", "/vagrant", **synced_folders_default
   synced_folders_msg = "Will mount folder#{'s' if config['synced_folders']['folders'].size > 1}: "
   parse_folder = lambda do |key, val = nil, args: {}|
@@ -239,10 +240,16 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
         host = key['host'] if !(key['host'].nil?)
         guest = key['guest'] if !(key['guest'].nil?)
         args[:type] = key['type'] if !(key['type'].nil?)
+        args[:owner] = key['owner'] if !(key['owner'].nil?)
+        args[:group] = key['group'] if !(key['group'].nil?)
+        args[:mount_options] = key['mount_options'] if !(key['mount_options'].nil?)
       elsif key.kind_of?(Array)
         host = key[0] if key.size > 0
         guest = key[1] if key.size > 1
         args[:type] = key[2] if key.size > 2
+        args[:mount_options] = key[3] if key.size > 3
+        args[:owner] = key[4] if key.size > 4
+        args[:group] = key[5] if key.size > 5
       end
     elsif val.kind_of?(String)
       host = key
@@ -257,7 +264,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     if host.nil? or guest.nil?
       fail Vagrant::Errors::VagrantError.new, "Invalid folder parameter: " + ((val.nil?) ? "#{key}" : "#{key}: #{val}") + ". Expects either an array (['/path/on/host', '/path/on/guest', 'optional mount type']), a set ({'host': '/path/on/host', 'guest': '/path/on/guest', 'type': 'optional mount type'}) or a key / value pair ('/path/on/host': '/path/on/guest')."
     end
-    synced_folders_msg += "#{host} => #{guest} [" + args.map{|k,v| "#{k}=#{v}"}.join(', ') + "], "
+    synced_folders_msg += "#{host} => #{guest} [" + args.map{|k,v| "#{k}=#{v}"}.join(", ") + "], "
     vagrant.vm.synced_folder host, guest, **args
   end
   if config['synced_folders']['folders'].kind_of?(Hash)
