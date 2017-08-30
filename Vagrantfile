@@ -326,6 +326,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     echo -e "\e[1;96mLinking web-root\e[0m"
     rm -rf /var/www/html && ln -s /vagrant/#{config['apache']['webroot']} /var/www/html
 
+    echo -e "\e[1;96mConfiguring mysql\e[0m"
+    sed -i 's/^bind-address\\(\\s*=\\s*\\)/bind-address\\10.0.0.0\\n#bind-address\\1/' /etc/mysql/my.cnf
+    [ -f '/etc/mysql/mysql.conf.d/mysqld.cnf' ] && sed -i 's/^bind-address\\(\\s*=\\s*\\)/bind-address\\10.0.0.0\\n#bind-address\\1/' /etc/mysql/mysql.conf.d/mysqld.cnf
+    mysql -uroot -p'#{config['mysql']['rootpass']}' -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '#{config['mysql']['rootpass']}';" > /dev/null
+    service mysql restart > /dev/null
+
     echo -e "\e[1;96mConfiguring php\e[0m"
     # This assumes php7 obviously, which is default on ubuntu 16.04+
     sed -i 's/memory_limit = .*/memory_limit = #{config['php']['memory_limit']}/' /etc/php/7.0/apache2/php.ini
