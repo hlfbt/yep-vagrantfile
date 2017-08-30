@@ -329,7 +329,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     echo -e "\e[1;96mConfiguring mysql\e[0m"
     sed -i 's/^bind-address\\(\\s*=\\s*\\)/bind-address\\10.0.0.0\\n#bind-address\\1/' /etc/mysql/my.cnf
     [ -f '/etc/mysql/mysql.conf.d/mysqld.cnf' ] && sed -i 's/^bind-address\\(\\s*=\\s*\\)/bind-address\\10.0.0.0\\n#bind-address\\1/' /etc/mysql/mysql.conf.d/mysqld.cnf
-    mysql -uroot -p'#{config['mysql']['rootpass']}' -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '#{config['mysql']['rootpass']}';" > /dev/null
+    MYSQL_PWD='#{config['mysql']['rootpass']}' mysql -uroot -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '#{config['mysql']['rootpass']}';" > /dev/null
     service mysql restart > /dev/null
 
     echo -e "\e[1;96mConfiguring php\e[0m"
@@ -371,7 +371,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
   if !(config['mysql']['databases'].nil?) and config['mysql']['databases'].kind_of?(Array)
     yep_puts "Will create database#{'s' if config['mysql']['databases'].size > 1} %s" % config['mysql']['databases'].join(", ") if !is_provisioned
     config['mysql']['databases'].each do |db|
-      vagrant.vm.provision "Creating Database: #{db}", type: "shell", keep_color: true, inline: "mysql -uroot -p'#{config['mysql']['rootpass']}' -e 'CREATE DATABASE IF NOT EXISTS `#{db}`;' >/dev/null"
+      vagrant.vm.provision "Creating Database: #{db}", type: "shell", keep_color: true, inline: "MYSQL_PWD='#{config['mysql']['rootpass']}' mysql -uroot -e 'CREATE DATABASE IF NOT EXISTS `#{db}`;' > /dev/null"
     end
   end
 
