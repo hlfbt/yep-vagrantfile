@@ -237,12 +237,15 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     guest = nil
     if val.nil?
       if key.kind_of?(Hash)
-        host = key['host'] if !(key['host'].nil?)
-        guest = key['guest'] if !(key['guest'].nil?)
-        args[:type] = key['type'] if !(key['type'].nil?)
-        args[:owner] = key['owner'] if !(key['owner'].nil?)
-        args[:group] = key['group'] if !(key['group'].nil?)
-        args[:mount_options] = key['mount_options'] if !(key['mount_options'].nil?)
+        ['host', 'hostpath'].each do |k|
+          host = key[k] if !(key[k].nil?)
+          key.delete(k)
+        end
+        ['guest', 'guestpath'].each do |k|
+          guest = key[k] if !(key[k].nil?)
+          key.delete(k)
+        end
+        args.merge!(key.each_with_object({}){|(k,v), h| h[k.to_sym] = v})
       elsif key.kind_of?(Array)
         host = key[0] if key.size > 0
         guest = key[1] if key.size > 1

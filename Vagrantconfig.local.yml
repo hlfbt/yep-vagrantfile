@@ -12,3 +12,8 @@ vm:
 synced_folders:
   type:     "sshfs"
   group:    "www-data"
+  folders:
+    - host: "home"
+      guest: "/home"
+      type: "sshfs"
+      reverse: true
