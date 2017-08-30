@@ -21,6 +21,7 @@ vm:
   hostname: "inside.dev"
   memory:   1024
   swap:     1024
+  cpus:     2
 
 ssh:
   username: "vagrant"

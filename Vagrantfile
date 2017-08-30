@@ -31,6 +31,7 @@ defaults = {
   },
   'vm' => {
     'hostname'  => "local.dev",
+    'cpus'      => 1,
     'memory'    => 1024,
     'swap'      => 1024
   },
@@ -225,6 +226,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
 
   vagrant.vm.provider :virtualbox do |vb|
     vb.customize ["modifyvm", :id, "--memory", config['vm']['memory']]
+    if config['vm']['cpus'].to_i > 1
+      vb.customize ["modifyvm", :id, "--ioapic", "on"]
+      vb.customize ["modifyvm", :id, "--cpus", config['vm']['cpus'].to_i]
+    end
   end
 
   synced_folders_default = config['synced_folders'].each_with_object({}){|(k,v), h| h[k.to_sym] = v}

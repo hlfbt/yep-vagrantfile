@@ -8,6 +8,7 @@ network:
 
 vm:
   memory:   2048
+  cpus:     4
 
 synced_folders:
   type:     "sshfs"
