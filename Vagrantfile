@@ -320,13 +320,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/app-pass password'
     debconf-set-selections <<< 'phpmyadmin phpmyadmin/reconfigure-webserver multiselect apache2'
 
-    echo "\e[1;96mInstalling base packages (this may take a while...)\e[0m"
+    echo -e "\e[1;96mInstalling base packages (this may take a while...)\e[0m"
     apt-get update > /dev/null && apt-get -y install apache2 libapache2-mod-php php php-cli php-curl php-gd php-intl php-zip php-mcrypt php-mysql mysql-server phpmyadmin graphicsmagick htop unzip curl git 2>&1 > /dev/null | sed -ne '/Extracting templates from packages: [0-9]\{2,3\}%/! {s/^/\x1b[1;91m/; s/$/\x1b[0m/}' >&2
 
-    echo "\e[1;96mLinking web-root\e[0m"
+    echo -e "\e[1;96mLinking web-root\e[0m"
     rm -rf /var/www/html && ln -s /vagrant/#{config['apache']['webroot']} /var/www/html
 
-    echo "\e[1;96mConfiguring php\e[0m"
+    echo -e "\e[1;96mConfiguring php\e[0m"
     # This assumes php7 obviously, which is default on ubuntu 16.04+
     sed -i 's/memory_limit = .*/memory_limit = #{config['php']['memory_limit']}/' /etc/php/7.0/apache2/php.ini
     sed -i 's/upload_max_filesize = .*/upload_max_filesize = 10M/' /etc/php/7.0/apache2/php.ini
@@ -336,7 +336,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
     sed -i 's/max_execution_time = .*/max_execution_time = 240/' /etc/php/7.0/apache2/php.ini
     sed -i 's/max_execution_time = .*/max_execution_time = 240/' /etc/php/7.0/cli/php.ini
 
-    echo "\e[1;96mConfiguring apache\e[0m"
+    echo -e "\e[1;96mConfiguring apache\e[0m"
     # Add AllowOverride to the default vhost configuration
     sed -e '14i \\	<Directory /var/www/html>\\n		AllowOverride All\\n	</Directory>\\n' /etc/apache2/sites-available/000-default.conf > /etc/apache2/sites-available/001-vagrant.conf
     echo >> /etc/apache2/sites-available/001-vagrant.conf
@@ -363,7 +363,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |vagrant|
   end
 
   if !(config['mysql']['databases'].nil?) and config['mysql']['databases'].kind_of?(Array)
-    yep_puts "Will create database(s) %s" % config['mysql']['databases'].join(", ") if !is_provisioned
+    yep_puts "Will create database#{'s' if config['mysql']['databases'].size > 1} %s" % config['mysql']['databases'].join(", ") if !is_provisioned
     config['mysql']['databases'].each do |db|
       vagrant.vm.provision "Creating Database: #{db}", type: "shell", keep_color: true, inline: "mysql -uroot -p'#{config['mysql']['rootpass']}' -e 'CREATE DATABASE IF NOT EXISTS `#{db}`;' >/dev/null"
     end
